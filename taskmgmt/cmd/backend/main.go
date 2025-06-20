@@ -13,6 +13,7 @@ import (
 	pb "github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/proto"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -27,6 +28,39 @@ func (s *server) CreateTask(ctx context.Context, req *pb.Task) (*pb.Task, error)
 	_, err := s.mongoCol.InsertOne(ctx, req)
 	return req, err
 }
+
+func (s *server) GetTask(ctx context.Context, req *pb.TaskID) (*pb.Task, error) {
+	var task pb.Task
+	err := s.mongoCol.FindOne(ctx, bson.M{"id": req.Id}).Decode(&task)
+	return &task, err
+}
+
+func (s *server) GetTasks(ctx context.Context, _ *pb.Empty) (*pb.TaskList, error) {
+	cursor, err := s.mongoCol.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	var tasks []*pb.Task
+	for cursor.Next(ctx) {
+		var t pb.Task
+		if err := cursor.Decode(&t); err == nil {
+			tasks = append(tasks, &t)
+		}
+	}
+	return &pb.TaskList{Tasks: tasks}, nil
+}
+
+func (s *server) UpdateTask(ctx context.Context, req *pb.Task) (*pb.Task, error) {
+	_, err := s.mongoCol.UpdateOne(ctx, bson.M{"id": req.Id}, bson.M{"$set": req})
+	return req, err
+}
+
+func (s *server) DeleteTask(ctx context.Context, req *pb.TaskID) (*pb.Empty, error) {
+	_, err := s.mongoCol.DeleteOne(ctx, bson.M{"id": req.Id})
+	return &pb.Empty{}, err
+}
+
 
 func main() {
 	mongoUser, okUser := os.LookupEnv("MONGO_USERNAME")
