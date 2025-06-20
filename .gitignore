@@ -1,0 +1,53 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Output of the Go coverage tool
+*.coverprofile
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Compiled Go binaries
+/api
+/backend
+
+# Vendor directory (if you use `go mod vendor`)
+/vendor/
+
+# Dependency directories (remove the comment below if you use Go modules)
+/go.sum
+/go.mod
+
+# IDE/editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+
+# Logs
+*.log
+
+# Kubernetes rendered manifests
+k8s-rendered/
+
+# Docker
+*.tar
+
+# Python cache (for load_test.py)
+__pycache__/
+*.pyc
+
+# Environment variable files (if any)
+.env
+.env.*
+
+# Misc
+*.bak
