@@ -2,9 +2,9 @@ ifndef DOCKER_USER
 $(error DOCKER_USER environment variable is not set)
 endif
 
-DOCKER_USER = $(DOCKER_USER)
 API_IMAGE=$(DOCKER_USER)/task-api:latest
 BACKEND_IMAGE=$(DOCKER_USER)/task-backend:latest
+RENDERED_DIR = k8s-rendered
 
 build:
 	docker build -f Dockerfile.api -t $(API_IMAGE) .
@@ -23,10 +23,12 @@ render-yamls:
 	done
 
 deploy: render-yamls
-	kubectl apply -f $(RENDERED_DIR)
+	# deployment of namespace is done separately to ensure the namespace exists before applying other resources
+	minikube kubectl -- apply -f $(RENDERED_DIR)/namespace.yaml
+	minikube kubectl -- apply -f $(RENDERED_DIR)
 
 minikube:
 	minikube start --driver=docker
 
 port-forward:
-	kubectl port-forward svc/api 8080:80 -n task-mgmt
+	minikube kubectl -- port-forward svc/api 8080:80 -n task-mgmt
