@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package task;
+
+option go_package = "github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/proto;proto";
+
+service TaskService {
+  rpc CreateTask (Task) returns (Task);
+  rpc GetTask (TaskID) returns (Task);
+  rpc GetTasks (Empty) returns (TaskList);
+  rpc UpdateTask (Task) returns (Task);
+  rpc DeleteTask (TaskID) returns (Empty);
+}
+
+message Task {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  bool completed = 4;
+}
+
+message TaskID {
+  string id = 1;
+}
+
+message TaskList {
+  repeated Task tasks = 1;
+}
+
+message Empty {}
