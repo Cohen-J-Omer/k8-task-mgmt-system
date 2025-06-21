@@ -118,6 +118,22 @@ python taskmgmt/load_test.py
 
 ---
 
+
+## Local Testing & Debugging
+
+1. Set Your Environment Variables in `.env`:
+```bash
+MONGO_USERNAME=mongo-user
+MONGO_PASSWORD=mongo-password
+BEARER_TOKEN=hardcoded-token
+DEBUG_TASK_MGMT=true
+BACKEND_GRPC_ADDR=localhost:50051
+```
+2. Start MongoDB with docker compose: `docker compose -f taskmgmt/testlocal/docker-compose.mongodb.yml up -d`
+3. Run the Backend service locally: `go run taskmgmt/cmd/backend/main.go`
+4. Run the API service locally: `go run taskmgmt/cmd/api/main.go`
+5. Test the local stack by running CRUD operations listed in the above segment.
+
 ## Notes
 
 - The REST API uses the [Gin](https://gin-gonic.com/) framework for fast HTTP routing and middleware.
