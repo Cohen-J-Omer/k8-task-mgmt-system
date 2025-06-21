@@ -35,16 +35,17 @@ func main() {
 	client := pb.NewTaskServiceClient(conn)
 
 	r := gin.Default()
-	r.Use(middleware.AuthMiddleware(bearerToken))
-
+	
 	taskHandler := handler.NewTaskHandler(client)
+	// /health is always accessible not requiring authentication token
+	r.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
+	r.Use(middleware.AuthMiddleware(bearerToken))
 	r.POST("/tasks", taskHandler.CreateTask)
 	r.GET("/tasks", taskHandler.GetTasks)
 	r.GET("/tasks/:id", taskHandler.GetTask)
 	r.PUT("/tasks/:id", taskHandler.UpdateTask)
 	r.DELETE("/tasks/:id", taskHandler.DeleteTask)
-	r.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
-
+	
 	// Graceful shutdown
 	srv := &http.Server{
 		Addr:    ":8080",
