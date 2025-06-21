@@ -111,13 +111,12 @@ curl -X DELETE http://localhost:8080/tasks/{id} \
 ## Load Testing
 
 To simulate load and trigger autoscaling:
-
-```
-python taskmgmt/load_test.py
-```
+1. Enable the metrics addon for hpa pods: `minikube addons enable metrics-server`.
+2. Wait for metrics server deployment to become ready: `minikube kubectl -- get deployment metrics-server -n kube-system`.
+Verify deployment is integrated successfully via: `minikube kubectl -- top pods -n task-mgmt`. 
+3. Run `python tests/load_test.py` and inspect scaling via either: `minikube kubectl get pods -n task-mgmt`, or `minikube kubectl get hpa -n task-mgmt`
 
 ---
-
 
 ## Local Testing & Debugging
 
@@ -129,7 +128,7 @@ BEARER_TOKEN=hardcoded-token
 DEBUG_TASK_MGMT=true
 BACKEND_GRPC_ADDR=localhost:50051
 ```
-2. Start MongoDB with docker compose: `docker compose -f taskmgmt/testlocal/docker-compose.mongodb.yml up -d`
+2. Start MongoDB with docker compose: `docker compose -f devtools/docker-compose.mongodb.yml up -d`
 3. Run the Backend service locally: `go run taskmgmt/cmd/backend/main.go`
 4. Run the API service locally: `go run taskmgmt/cmd/api/main.go`
 5. Test the local stack by running CRUD operations listed in the above segment.
