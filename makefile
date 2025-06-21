@@ -11,8 +11,8 @@ build-grpc:
 	--go-grpc_out=taskmgmt/proto --go-grpc_opt=paths=source_relative taskmgmt/proto/task.proto
 
 build:
-	docker build -f Dockerfile.api -t $(API_IMAGE) .
-	docker build -f Dockerfile.backend -t $(BACKEND_IMAGE) .
+	docker buildx build --platform linux/amd64 -f Dockerfile.api -t $(API_IMAGE) .
+	docker buildx build --platform linux/amd64 -f Dockerfile.backend -t $(BACKEND_IMAGE) .
 
 push:
 	docker push $(API_IMAGE)
