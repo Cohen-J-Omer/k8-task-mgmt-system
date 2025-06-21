@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	pb "github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/proto"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -25,8 +26,9 @@ type server struct {
 }
 
 func (s *server) CreateTask(ctx context.Context, req *pb.Task) (*pb.Task, error) {
-	_, err := s.mongoCol.InsertOne(ctx, req)
-	return req, err
+    req.Id = uuid.New().String() // Generate a new UUID for the task ID
+    _, err := s.mongoCol.InsertOne(ctx, req)
+    return req, err
 }
 
 func (s *server) GetTask(ctx context.Context, req *pb.TaskID) (*pb.Task, error) {
