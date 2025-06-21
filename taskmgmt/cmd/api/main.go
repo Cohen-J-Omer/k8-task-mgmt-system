@@ -15,6 +15,7 @@ import (
 	pb "github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/proto"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -31,7 +32,7 @@ func main() {
 		log.Fatal("Environment variable BEARER_TOKEN is not set")
 	}
 
-	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
+	conn, err := grpc.NewClient(grpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
