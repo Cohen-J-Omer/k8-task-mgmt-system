@@ -8,7 +8,7 @@ A containerized task management system with a REST API (built using Go and Gin),
 
 ### Prerequisites
 
-- Go 1.21+
+- Go 1.23+
 - Docker
 - Minikube
 - Python 3 (for load testing)
