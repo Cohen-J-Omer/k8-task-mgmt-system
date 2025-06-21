@@ -139,5 +139,5 @@ BACKEND_GRPC_ADDR=localhost:50051
 - All secrets are managed via Kubernetes Secrets.
 - MongoDB is only accessible from the backend service.
 - HPA is enabled for both API and backend deployments.
-- Images are built for `linux/amd64` and should be pushed to Docker Hub.
+- Images are built for `linux/amd64` and are pushed to Docker Hub.
 - Designed to run locally on macOS/Linux with Minikube.
