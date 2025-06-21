@@ -6,6 +6,10 @@ API_IMAGE=$(DOCKER_USER)/task-api:latest
 BACKEND_IMAGE=$(DOCKER_USER)/task-backend:latest
 RENDERED_DIR = k8s-rendered
 
+build-grpc:
+	protoc --proto_path=taskmgmt/proto --go_out=taskmgmt/proto --go_opt=paths=source_relative \
+	--go-grpc_out=taskmgmt/proto --go-grpc_opt=paths=source_relative taskmgmt/proto/task.proto
+
 build:
 	docker build -f Dockerfile.api -t $(API_IMAGE) .
 	docker build -f Dockerfile.backend -t $(BACKEND_IMAGE) .
