@@ -86,7 +86,7 @@ func (s *server) DeleteTask(ctx context.Context, req *pb.TaskID) (*pb.Task, erro
 
 
 func main() {
-	// Load .env file if in debug mode
+	// loads .env for local debugging
 	debug:=config.LoadDotenvIfDebug()
 
 	mongoUser, okUser := os.LookupEnv("MONGO_USERNAME")

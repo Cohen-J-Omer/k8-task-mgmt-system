@@ -8,7 +8,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// LoadDotenvIfDebug loads .env if DEBUG_TASK_MGMT is set to "true" and returns true in such case
+// LoadDotenvIfDebug loads .env for local debugging.
+// exists program if DEBUG_TASK_MGMT is set to "true" while the .env file is missing
 func LoadDotenvIfDebug() bool {
 	err := godotenv.Load()
 	debug, okDebug := os.LookupEnv("DEBUG_TASK_MGMT")

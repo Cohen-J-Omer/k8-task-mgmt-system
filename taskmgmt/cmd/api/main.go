@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	// Load .env file if in debug mode
+	// loads .env for local debugging
 	config.LoadDotenvIfDebug()
 
 	grpcAddr, ok := os.LookupEnv("BACKEND_GRPC_ADDR")
