@@ -9,7 +9,7 @@ service TaskService {
   rpc GetTask (TaskID) returns (Task);
   rpc GetTasks (Empty) returns (TaskList);
   rpc UpdateTask (Task) returns (Task);
-  rpc DeleteTask (TaskID) returns (Empty);
+  rpc DeleteTask (TaskID) returns (Task);
 }
 
 message Task {
