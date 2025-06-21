@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/internal/config"
 	"github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/internal/handler"
 	"github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/internal/middleware"
 	pb "github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/proto"
@@ -17,6 +18,9 @@ import (
 )
 
 func main() {
+	// Load .env file if in debug mode
+	config.LoadDotenvIfDebug()
+
 	grpcAddr, ok := os.LookupEnv("BACKEND_GRPC_ADDR")
 	if !ok || grpcAddr == "" {
 		log.Fatal("Environment variable BACKEND_GRPC_ADDR is not set")

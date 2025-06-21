@@ -10,13 +10,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	pb "github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/proto"
+	"github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/internal/config"
+
+	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/codes"
+    "google.golang.org/grpc/status"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
@@ -32,39 +36,59 @@ func (s *server) CreateTask(ctx context.Context, req *pb.Task) (*pb.Task, error)
 }
 
 func (s *server) GetTask(ctx context.Context, req *pb.TaskID) (*pb.Task, error) {
-	var task pb.Task
-	err := s.mongoCol.FindOne(ctx, bson.M{"id": req.Id}).Decode(&task)
-	return &task, err
+    var task pb.Task
+    err := s.mongoCol.FindOne(ctx, bson.M{"id": req.Id}).Decode(&task)
+    if err != nil {
+        return nil, status.Errorf(codes.NotFound, "task with id %s not found", req.Id)
+    }
+    return &task, nil
 }
 
 func (s *server) GetTasks(ctx context.Context, _ *pb.Empty) (*pb.TaskList, error) {
-	cursor, err := s.mongoCol.Find(ctx, bson.M{})
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
-	var tasks []*pb.Task
-	for cursor.Next(ctx) {
-		var t pb.Task
-		if err := cursor.Decode(&t); err == nil {
-			tasks = append(tasks, &t)
-		}
-	}
-	return &pb.TaskList{Tasks: tasks}, nil
+    cursor, err := s.mongoCol.Find(ctx, bson.M{})
+    if err != nil {
+        return nil, status.Errorf(codes.Internal, "failed to list tasks: %v", err)
+    }
+    defer cursor.Close(ctx)
+    var tasks []*pb.Task
+    for cursor.Next(ctx) {
+        var t pb.Task
+        if err := cursor.Decode(&t); err == nil {
+            tasks = append(tasks, &t)
+        }
+    }
+    // Always return a TaskList, possibly empty
+    return &pb.TaskList{Tasks: tasks}, nil
 }
 
+// update task implementing upsert behavior, i.e., 
+// create a new task with that ID if it does not exist, or update it if it does
 func (s *server) UpdateTask(ctx context.Context, req *pb.Task) (*pb.Task, error) {
-	_, err := s.mongoCol.UpdateOne(ctx, bson.M{"id": req.Id}, bson.M{"$set": req})
-	return req, err
+    filter := bson.M{"id": req.Id}
+    update := bson.M{"$set": req}
+    opts := options.Update().SetUpsert(true)
+    _, err := s.mongoCol.UpdateOne(ctx, filter, update, opts)
+    return req, err
 }
 
-func (s *server) DeleteTask(ctx context.Context, req *pb.TaskID) (*pb.Empty, error) {
-	_, err := s.mongoCol.DeleteOne(ctx, bson.M{"id": req.Id})
-	return &pb.Empty{}, err
+func (s *server) DeleteTask(ctx context.Context, req *pb.TaskID) (*pb.Task, error) {
+    var deletedTask pb.Task
+    err := s.mongoCol.FindOne(ctx, bson.M{"id": req.Id}).Decode(&deletedTask)
+    if err != nil {
+        return nil, status.Errorf(codes.NotFound, "task with id %s not found", req.Id)
+    }
+    _, err = s.mongoCol.DeleteOne(ctx, bson.M{"id": req.Id})
+    if err != nil {
+        return nil, status.Errorf(codes.Internal, "failed to delete task: %v", err)
+    }
+    return &deletedTask, nil
 }
 
 
 func main() {
+	// Load .env file if in debug mode
+	debug:=config.LoadDotenvIfDebug()
+
 	mongoUser, okUser := os.LookupEnv("MONGO_USERNAME")
 	mongoPass, okPass := os.LookupEnv("MONGO_PASSWORD")
 
@@ -75,8 +99,12 @@ func main() {
 		log.Fatal("Environment variable MONGO_PASSWORD is not set")
 	}
 
-	mongoURI := fmt.Sprintf("mongodb://%s:%s@mongodb:27017", mongoUser, mongoPass)
-
+	mongoHost := "mongodb" // default for Kubernetes
+	// replace host with localhost for local debugging
+	if debug{
+		mongoHost = "localhost"
+	}
+	mongoURI := fmt.Sprintf("mongodb://%s:%s@%s:27017", mongoUser, mongoPass, mongoHost)
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		log.Fatal(err)
