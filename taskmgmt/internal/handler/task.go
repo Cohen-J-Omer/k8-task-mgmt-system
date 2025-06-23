@@ -9,8 +9,8 @@ import (
 	"github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/internal/validator"
 	pb "github.com/Cohen-J-Omer/k8-task-mgmt-system/taskmgmt/proto"
 	"github.com/gin-gonic/gin"
-	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type TaskHandler struct {
@@ -23,16 +23,20 @@ func NewTaskHandler(client pb.TaskServiceClient) *TaskHandler {
 
 func (h *TaskHandler) CreateTask(c *gin.Context) {
 	var req pb.Task
+	// bind the JSON body to the task struct
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := validator.ValidateTask(&req); err != nil {
+	// validate task object using the validator package
+	if err := validator.ValidateTaskCreate(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Set a timeout context for the gRPC call
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+	// Create the task using the gRPC client
 	resp, err := h.client.CreateTask(ctx, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -42,7 +46,9 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) GetTasks(c *gin.Context) {
-    taskList, err := h.client.GetTasks(context.Background(), &pb.Empty{})
+	// Call the gRPC service to get the list of tasks
+	// not using a timeout here, as it may take longer to fetch tasks
+	taskList, err := h.client.GetTasks(c.Request.Context(), &pb.Empty{})
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list tasks"})
         return
@@ -55,15 +61,27 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 }
 
 func (h *TaskHandler) GetTask(c *gin.Context) {
-    id := c.Param("id")
+    id := c.Param("id") // Extract the task ID from the URL parameter
+	// Validate that the ID is not empty
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+		return
+	}
     req := &pb.TaskID{Id: id}
-    task, err := h.client.GetTask(context.Background(), req)
+
+	// Set a timeout context for the gRPC call
+    ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+    defer cancel()
+
+    task, err := h.client.GetTask(ctx, req)
     if err != nil {
-        st, ok := status.FromError(err)
-        if ok && st.Code() == codes.NotFound {
+        status, ok := status.FromError(err)
+		// Check if the error is a NotFound error
+        if ok && status.Code() == codes.NotFound {
             c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("task with id %s not found", id)})
             return
         }
+		// For other errors, return a generic internal server error
         c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get task"})
         return
     }
@@ -72,18 +90,27 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	id := c.Param("id")
+	// Validate that the ID is not empty
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+		return
+	}
 	var req pb.Task
+	// bind the JSON body to the task struct
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	req.Id = id
-	if err := validator.ValidateTask(&req); err != nil {
+	// validate task object using the validator package
+	if err := validator.ValidateTaskCreate(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Set a timeout context for the gRPC call
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+	// Update the task using the gRPC client
 	resp, err := h.client.UpdateTask(ctx, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -94,14 +121,26 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
     id := c.Param("id")
+	// Validate that the ID is not empty
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+		return
+	}
     req := &pb.TaskID{Id: id}
-    deletedTask, err := h.client.DeleteTask(context.Background(), req)
+
+	// Set a timeout context for the gRPC call
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+    deletedTask, err := h.client.DeleteTask(ctx, req)
     if err != nil {
-        st, ok := status.FromError(err)
-        if ok && st.Code() == codes.NotFound {
+        status, ok := status.FromError(err)
+		// Check if the error is a NotFound error
+        if ok && status.Code() == codes.NotFound {
             c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("task with id %s not found", id)})
             return
         }
+		// For other errors, return a generic internal server error
         c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete task"})
         return
     }

@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// AuthMiddleware is a Gin middleware that checks for a valid Bearer token in the Authorization header.
 func AuthMiddleware(expectedToken string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
