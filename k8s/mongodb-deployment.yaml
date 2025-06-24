@@ -36,3 +36,10 @@ spec:
           limits:
             cpu: "500m"
             memory: "512Mi"
+        volumeMounts:
+          - name: mongodb-data
+            mountPath: /data/db  # path inside the container, mapped to real node's location in PV's hostPath. MongoDB expects to store its data at /data/db.
+      volumes:
+        - name: mongodb-data
+          persistentVolumeClaim:
+            claimName: mongodb-pvc
