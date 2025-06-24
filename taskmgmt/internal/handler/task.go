@@ -12,7 +12,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
+// implements grpc's TaskServiceClient 
+// TaskHandler handles API HTTP requests for task management
+// using a gRPC client to communicate with the backend service.
 type TaskHandler struct {
 	client pb.TaskServiceClient
 }
@@ -21,6 +23,7 @@ func NewTaskHandler(client pb.TaskServiceClient) *TaskHandler {
 	return &TaskHandler{client: client}
 }
 
+// CreateTask handles the creation of a new task.
 func (h *TaskHandler) CreateTask(c *gin.Context) {
 	var req pb.Task
 	// bind the JSON body to the task struct
@@ -45,6 +48,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp)
 }
 
+// GetTasks retrieves a list of tasks from the backend service.
 func (h *TaskHandler) GetTasks(c *gin.Context) {
 	// Call the gRPC service to get the list of tasks
 	// not using a timeout here, as it may take longer to fetch tasks
@@ -60,6 +64,7 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
     c.JSON(http.StatusOK, taskList)
 }
 
+// GetTask retrieves a specific task by its ID.
 func (h *TaskHandler) GetTask(c *gin.Context) {
     id := c.Param("id") // Extract the task ID from the URL parameter
 	// Validate that the ID is not empty
@@ -88,6 +93,7 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
     c.JSON(http.StatusOK, task)
 }
 
+// UpdateTask updates an existing task by its ID.
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	id := c.Param("id")
 	// Validate that the ID is not empty
@@ -119,6 +125,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// DeleteTask deletes a specific task by its ID.
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
     id := c.Param("id")
 	// Validate that the ID is not empty

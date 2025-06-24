@@ -31,19 +31,25 @@ func main() {
 	if !ok2 || bearerToken == "" {
 		log.Fatal("Environment variable BEARER_TOKEN is not set")
 	}
-
+	// Create a gRPC client connection
+	log.Printf("Connecting to gRPC server at %s", grpcAddr)
 	conn, err := grpc.NewClient(grpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
+
+	// Create a new gRPC client
 	client := pb.NewTaskServiceClient(conn)
 
+	// Set up Gin router
 	r := gin.Default()
 	
 	taskHandler := handler.NewTaskHandler(client)
-	// /health is always accessible not requiring authentication token
+	// add a health readiness/liveness entry point for k8
+	// This allows Kubernetes HPA to check the health of the API server.
 	r.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
+	// /health is always accessible not requiring authentication token
 	r.Use(middleware.AuthMiddleware(bearerToken))
 	r.POST("/tasks", taskHandler.CreateTask)
 	r.GET("/tasks", taskHandler.GetTasks)
@@ -51,24 +57,25 @@ func main() {
 	r.PUT("/tasks/:id", taskHandler.UpdateTask)
 	r.DELETE("/tasks/:id", taskHandler.DeleteTask)
 	
-	// Graceful shutdown
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: r,
 	}
-
+	// Start the API HTTP server
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
 	log.Println("REST API server started on :8080")
-
+		
+	// Wait for interrupt signal to gracefully shutdown the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutting down REST API server...")
-
+	
+	// gives the API server up to 10 seconds to finish handling any in-flight requests and shut down gracefully
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {

@@ -24,26 +24,36 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
+// implements gRPC's TaskServiceServer interface
+// This server handles gRPC requests for task management.
+// It connects to a MongoDB database to store and retrieve tasks.
 type server struct {
 	pb.UnimplementedTaskServiceServer
-	mongoCol *mongo.Collection
+	mongoCol *mongo.Collection  // collection handler for the "tasks" MongoDB collection
 }
 
+// CreateTask creates a new task in the MongoDB collection.
 func (s *server) CreateTask(ctx context.Context, req *pb.Task) (*pb.Task, error) {
     req.Id = uuid.New().String() // Generate a new UUID for the task ID
     _, err := s.mongoCol.InsertOne(ctx, req)
-    return req, err
+    if err != nil {
+        return nil, status.Errorf(codes.Internal, "failed to create task: %v", err)
+    }
+    return req, nil
 }
 
+// GetTask retrieves a task by its ID from the MongoDB collection.
 func (s *server) GetTask(ctx context.Context, req *pb.TaskID) (*pb.Task, error) {
     var task pb.Task
     err := s.mongoCol.FindOne(ctx, bson.M{"id": req.Id}).Decode(&task)
+	// If the task is not found, return a NotFound error
     if err != nil {
         return nil, status.Errorf(codes.NotFound, "task with id %s not found", req.Id)
     }
     return &task, nil
 }
 
+// GetTasks retrieves all tasks from the MongoDB collection.
 func (s *server) GetTasks(ctx context.Context, _ *pb.Empty) (*pb.TaskList, error) {
     cursor, err := s.mongoCol.Find(ctx, bson.M{})
     if err != nil {
@@ -53,9 +63,12 @@ func (s *server) GetTasks(ctx context.Context, _ *pb.Empty) (*pb.TaskList, error
     var tasks []*pb.Task
     for cursor.Next(ctx) {
         var t pb.Task
-        if err := cursor.Decode(&t); err == nil {
-            tasks = append(tasks, &t)
-        }
+        if err := cursor.Decode(&t); err != nil {
+			// Log the error but continue processing other tasks
+			log.Printf("failed to decode task: %v", err)
+		}else{
+			tasks = append(tasks, &t)
+		}
     }
     // Always return a TaskList, possibly empty
     return &pb.TaskList{Tasks: tasks}, nil
@@ -66,11 +79,16 @@ func (s *server) GetTasks(ctx context.Context, _ *pb.Empty) (*pb.TaskList, error
 func (s *server) UpdateTask(ctx context.Context, req *pb.Task) (*pb.Task, error) {
     filter := bson.M{"id": req.Id}
     update := bson.M{"$set": req}
-    opts := options.Update().SetUpsert(true)
+    opts := options.Update().SetUpsert(true)  // Enable upsert behavior, i.e., create if not exists
     _, err := s.mongoCol.UpdateOne(ctx, filter, update, opts)
-    return req, err
+	if err != nil {
+        return nil, status.Errorf(codes.Internal, "failed to update task: %v", err)
+    }
+    return req, nil
 }
 
+// DeleteTask deletes a task by its ID from the MongoDB collection.
+// It returns the deleted task if found, or an error if not found.
 func (s *server) DeleteTask(ctx context.Context, req *pb.TaskID) (*pb.Task, error) {
     var deletedTask pb.Task
     err := s.mongoCol.FindOne(ctx, bson.M{"id": req.Id}).Decode(&deletedTask)
@@ -105,34 +123,39 @@ func main() {
 		mongoHost = "localhost"
 	}
 	mongoURI := fmt.Sprintf("mongodb://%s:%s@%s:27017", mongoUser, mongoPass, mongoHost)
+	// Connect to MongoDB using the provided URI
+	log.Printf("Connecting to MongoDB at %s", mongoURI)
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		log.Fatal(err)
 	}
-	col := client.Database("tasks").Collection("tasks")
+	col := client.Database("tasks").Collection("tasks") // Use/create the "tasks" collection in the "tasks" database
 
+	// creates a TCP network listener on port 50051 for gRPC server 
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// register task service
+	// register server as a gRPC TaskServiceServer 
 	grpcServer := grpc.NewServer()
 	pb.RegisterTaskServiceServer(grpcServer, &server{mongoCol: col})
 
-	// Register gRPC health check service
+	// Register gRPC health check service for k8 readiness and liveness probes
+	// This allows Kubernetes HPA to check the health of the gRPC server.
 	healthServer := health.NewServer()
 	healthpb.RegisterHealthServer(grpcServer, healthServer)
 	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 
-	// Graceful shutdown
+	// Start the gRPC backend server
 	go func() {
 		log.Println("gRPC backend listening on :50051")
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
-	}()
-
+		}()
+		
+	// Wait for a termination signal (SIGINT or SIGTERM) to gracefully shut down the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -143,7 +166,8 @@ func main() {
 		grpcServer.GracefulStop()
 		close(done)
 	}()
-
+	
+	// Wait for the server to stop gracefully or timeout after 10 seconds
 	select {
 	case <-done:
 		log.Println("gRPC backend exited gracefully")
