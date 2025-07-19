@@ -1,0 +1,21 @@
+resources:
+  - api-deployment.yaml
+  - backend-deployment.yaml
+  - api-service.yaml
+  - backend-service.yaml
+  - mongodb-deployment.yaml
+  - mongodb-service.yaml
+  - mongodb-pvc.yaml
+  - mongodb-secret.yaml
+  - namespace.yaml
+  - networkpolicy-mongodb.yaml
+  - hpa-api.yaml
+  - hpa-backend.yaml
+
+images:
+  - name: DOCKER_USER/task-api
+    newName: DOCKER_USER/task-api
+    newTag: PLACEHOLDER
+  - name: DOCKER_USER/task-backend
+    newName: DOCKER_USER/task-backend
+    newTag: PLACEHOLDER

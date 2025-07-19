@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: ${DOCKER_USER}/task-api:latest
+        image: DOCKER_USER/task-api
         env:
         - name: BACKEND_GRPC_ADDR
           value: "backend:50051"

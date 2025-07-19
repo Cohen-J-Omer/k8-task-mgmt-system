@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ${DOCKER_USER}/task-backend:latest
+        image: DOCKER_USER/task-backend
         env:
         - name: MONGO_USERNAME
           valueFrom:
