@@ -7,6 +7,7 @@ resources:
   - mongodb-service.yaml
   - mongodb-pvc.yaml
   - mongodb-secret.yaml
+  - api-secret.yaml
   - namespace.yaml
   - networkpolicy-mongodb.yaml
   - hpa-api.yaml
