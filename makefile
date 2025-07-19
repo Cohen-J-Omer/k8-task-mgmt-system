@@ -2,8 +2,10 @@ ifndef DOCKER_USER
 $(error DOCKER_USER environment variable is not set)
 endif
 
-API_IMAGE=$(DOCKER_USER)/task-api:latest
-BACKEND_IMAGE=$(DOCKER_USER)/task-backend:latest
+TAG ?= $(shell git ls-remote https://github.com/Cohen-J-Omer/k8-task-mgmt-system.git HEAD | awk '{print $$1}')
+TAG-manual ?= latest
+API_IMAGE=$(DOCKER_USER)/task-api:$(TAG-manual)
+BACKEND_IMAGE=$(DOCKER_USER)/task-backend:$(TAG-manual)
 RENDERED_DIR = k8s-rendered
 
 build-grpc:
@@ -26,10 +28,21 @@ render-yamls:
 		envsubst < $$f > $(RENDERED_DIR)/$$(basename $$f); \
 	done
 
-deploy: render-yamls
+deploy-manual: render-yamls
 	# deployment of namespace is done separately to ensure the namespace exists before applying other resources
 	minikube kubectl -- apply -f $(RENDERED_DIR)/namespace.yaml
 	minikube kubectl -- apply -f $(RENDERED_DIR)
+
+deploy:
+	rm -rf $(RENDERED_DIR)
+	mkdir -p $(RENDERED_DIR)
+	kustomize build k8s/ \
+	  --image $(DOCKER_USER)/task-api=$(DOCKER_USER)/task-api:$(TAG) \
+	  --image $(DOCKER_USER)/task-backend=$(DOCKER_USER)/task-backend:$(TAG) \
+	  --load-restrictor=LoadRestrictionsNone \
+	  --reorder=legacy \
+	  > $(RENDERED_DIR)/all.yaml
+	kubectl apply -f $(RENDERED_DIR)/all.yaml
 
 minikube:
 	minikube start --driver=docker
