@@ -59,19 +59,23 @@ func (s *server) GetTasks(ctx context.Context, _ *pb.Empty) (*pb.TaskList, error
     if err != nil {
         return nil, status.Errorf(codes.Internal, "failed to list tasks: %v", err)
     }
-    defer cursor.Close(ctx)
-    var tasks []*pb.Task
-    for cursor.Next(ctx) {
-        var t pb.Task
-        if err := cursor.Decode(&t); err != nil {
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			log.Printf("failed to close cursor: %v", err)
+		}
+	}()
+	var tasks []*pb.Task
+	for cursor.Next(ctx) {
+		var t pb.Task
+		if err := cursor.Decode(&t); err != nil {
 			// Log the error but continue processing other tasks
 			log.Printf("failed to decode task: %v", err)
 		}else{
 			tasks = append(tasks, &t)
 		}
-    }
-    // Always return a TaskList, possibly empty
-    return &pb.TaskList{Tasks: tasks}, nil
+	}
+	// Always return a TaskList, possibly empty
+	return &pb.TaskList{Tasks: tasks}, nil
 }
 
 // update task implementing upsert behavior, i.e., 
