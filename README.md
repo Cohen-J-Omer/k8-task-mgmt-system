@@ -23,21 +23,7 @@ git clone https://github.com/Cohen-J-Omer/k8-task-mgmt-system.git
 cd k8-task-mgmt-system
 ```
 
----
-
-### 2. Build and Push Docker Images
-
-Set env var DOCKER_USER as your Docker Hub username: `export DOCKER_USER=<user-name>`.  
-build and push images:
-
-```
-make build
-make push
-```
-
----
-
-### 3. Start Kubernetes Locally
+### 2. Start Kubernetes Locally
 
 ```
 make minikube
@@ -45,15 +31,30 @@ make minikube
 
 ---
 
-### 4. Deploy All Components
+### 3. Deploy the Cluster (Choose One Route)
+
+**3.a. Recommended: Deploy with Latest Images from GitHub Actions**
+
+This is a one-stop shop that deploys the cluster using the latest commit hash in the project's repo, utilizing the GitHub Actions CD pipeline.
 
 ```
 make deploy
 ```
 
+**3.b. Manual: Build, Push, and Deploy Local Images (for dev/debugging purposes)**
+
+Run these commands if you want to build, push, and deploy using your own local images, instead of latest commit-based image:
+
+```
+export DOCKER_USER=<your-dockerhub-username>
+make build-local
+make push-manual
+make deploy-manual
+```
+
 ---
 
-### 5. Access the REST API
+### 4. Access the REST API
 
 Forward the API service:
 
@@ -138,6 +139,7 @@ BACKEND_GRPC_ADDR=localhost:50051
 - The REST API uses the [Gin](https://gin-gonic.com/) framework for fast HTTP routing and middleware.
 - All secrets are managed via Kubernetes Secrets.
 - MongoDB is only accessible from the backend service.
-- HPA is enabled for both API and backend deployments.
+- HPA (Horizontal Pod Autoscaling) is enabled for both API and backend deployments.
+- Continuous Deployment (CD) is incorporated via GitHub Actions, building and pushing images based on the latest commit.
 - Images are built for `linux/amd64` and are pushed to Docker Hub.
 - Designed to run locally on macOS/Linux with Minikube.
